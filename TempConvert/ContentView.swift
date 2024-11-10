@@ -9,78 +9,106 @@ import SwiftUI
 import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
+    @State private var temp: Double = 0.0
+    @State private var fromTemp: String = "Kelvin"
+    @State private var toTemp: String = "Kelvin"
+    
+    let selectionTemp = ["Kelvin", "Celcius", "Fahrenheit", "Reamur"]
+    
+    var convResult: Double {
+        if(fromTemp == toTemp) {
+            return temp
+        }
+        
+        if(fromTemp == "Celcius") {
+            switch(toTemp){
+            case "Kelvin":
+                return temp + 273
+            case "Reamur":
+                return 4/5 * temp
+            case "Fahrenheit":
+                return (9/5 * temp) + 32
+            default:
+                return temp
+            }
+        } else if (fromTemp == "Kelvin") {
+            switch(toTemp){
+            case "Celcius":
+                return temp - 273
+            case "Reamur":
+                return 4/5 * (temp - 273)
+            case "Fahrenheit":
+                return (9/5 * (temp - 273)) + 32
+            default:
+                return temp
+            }
+        } else if (fromTemp == "Reamur") {
+            switch(toTemp){
+            case "Celcius":
+                return 5/4 * temp
+            case "Kelvin":
+                return (5/4 * temp) + 273
+            case "Fahrenheit":
+                return (9/4 * temp ) + 32
+            default:
+                return temp
+            }
+        } else if (fromTemp == "Fahrenheit") {
+            switch(toTemp){
+            case "Celcius":
+                return 5/9 * (temp - 32)
+            case "Kelvin":
+                return 5/9 * (temp - 32) + 273
+            case "Reamur":
+                return 4/9 * (temp - 32)
+            default:
+                return temp
+            }
+        }
+        
+        return temp
+    }
+    
+    func formattedNumber(_ value: Double) -> String {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.groupingSeparator = ","
+            formatter.groupingSize = 3
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 0
+            
+            return formatter.string(from: NSNumber(value: value)) ?? ""
+        }
 
     var body: some View {
         NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
-                    }
+            Form {
+                Section{
+                    Picker("From To", selection: $fromTemp) {
+                        ForEach(selectionTemp, id: \.self) {
+                            Text($0)
+                        }
+                    }.pickerStyle(.navigationLink)
+                    TextField("Insert Value", value: $temp, format: .number)
+                    Picker("Convert To", selection: $toTemp) {
+                        ForEach(selectionTemp, id: \.self) {
+                            Text($0)
+                        }
+                    }.pickerStyle(.navigationLink)
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+                
+                Section("Result"){
+                   Text(" \(formattedNumber(convResult))")
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
+            }.navigationTitle("Temp Conversion")
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
+
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
 }
